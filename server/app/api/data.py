@@ -1,106 +1,43 @@
+import h5py
+from flask import jsonify, request
 from app.api import bp
-from flask import request, jsonify, url_for
-import json, copy
 
 
-# @bp.route('/get_data', methods=['GET'])
-# def get_data():
-#     global data
-#     if databaseMode:
-#         data = loadDataFromNeo4j(graph)
-#     else:
-#         # print(request.json)
-#         data = loadDataFromJson('./templates/data.json')
-#         # data = loadDataFromJson('./testData/500-500.json')
-#     inniAdjMatrix(data)
-#
-#     data = {'nodes': [], 'links': []}
-#     return jsonify(data)
-#
-#
-# @bp.route('/post_data', methods=['POST', 'OPTIONS'])
-# def post_data():
-#     global data
-#     if request.method == 'POST':
-#         data = request.json
-#
-#         nodes = []
-#         links = []
-#         for node in data["nodes"]:
-#             try:
-#                 nodes.append({'index': node['index'], 'label': node['label'], 'reference': node['reference'], 'groupId': node['groupId']})
-#             except KeyError:
-#                 nodes.append({'index': node['index'], 'reference': node['reference'], 'groupId': node['groupId']})
-#         for link in data["links"]:
-#             links.append({'source': link['source']['index'], 'target': link['target']['index']})
-#         data = {'nodes': nodes, 'links': links}
-#
-#         if databaseMode:
-#             json2neo(data, graph)
-#         else:
-#             with open('./templates/data.json', 'w') as f:
-#                 json.dump({'nodes': nodes, 'links': links}, f)
-#
-#     return jsonify(1)
-#
-#
-# indexNew2Old = {}
-# mainGraphData = {}
-#
-#
-# @bp.route('/get_subGraphData', methods=['GET'])
-# def get_subGraphData():
-#     global indexNew2Old
-#     global mainGraphData
-#     # print(indexNew2Old)
-#     # print(request.args['baseNodeIndex'])
-#     # try:
-#     #     print(indexNew2Old[int(request.args['baseNodeIndex'])])
-#     # except:
-#     #     pass
-#
-#     if mainGraphData != data:
-#         mainGraphData = copy.deepcopy(data)
-#         updateAdjMatrix = True
-#     else:
-#         updateAdjMatrix = False
-#     try:
-#         subGraphData = adjSubgraph(mainGraphData, indexNew2Old[int(request.args['baseNodeIndex'])],
-#                                    int(request.args['numLayer']), updateAdjMatrix=updateAdjMatrix)
-#     except KeyError:
-#         subGraphData = adjSubgraph(mainGraphData, int(request.args['baseNodeIndex']), int(request.args['numLayer']),
-#                                    updateAdjMatrix=updateAdjMatrix)
-#     subGraphData, indexNew2Old = refreshIndex(subGraphData)
-#     res = {'subgraph': subGraphData, 'new2old': list(indexNew2Old.values())}
-#     return jsonify(res)
-#
-#
-# @bp.route('/get_mainGraphData', methods=['GET'])
-# def get_mainGraphData():
-#     return jsonify(data)
-#
-#
-# @bp.route('/get_search', methods=['GET'])
-# def get_search():
-#     # print(request.args['search'])
-#     global indexNew2Old
-#     global mainGraphData
-#
-#     if mainGraphData != data:
-#         mainGraphData = copy.deepcopy(data)
-#         updateAdjMatrix = True
-#     else:
-#         updateAdjMatrix = False
-#     if databaseMode:
-#         subGraphData = searchSubGraph(graph, mainGraphData, request.args['search'], int(request.args['numLayer']),
-#                                       request.args['isRecommend'], updateAdjMatrix=updateAdjMatrix)
-#
-#     if subGraphData:
-#         subGraphData, indexNew2Old = refreshIndex(subGraphData)
-#     res = {'subgraph': subGraphData, 'new2old': list(indexNew2Old.values())}
-#     return jsonify(res)
-#
-#
-# @bp.route('/get_autoComplete', methods=['GET'])
-# def get_autoComplete():
-#     return jsonify(autoComplete(graph, request.args['search']))
+@bp.route('/BBTop', methods=['GET'])
+def get_data():
+    f = h5py.File('2A.GPM.DPR.V8-20180723.20210101-S013133-E030407.038882.V06A.HDF5', 'r')
+    CSF = f['NS']['CSF']
+    BBTop = CSF['binBBTop']
+    BBBottom = CSF['binBBBottom']
+    BBPeak = CSF['binBBPeak']
+    VER = f['NS']['VER']
+    ZeroDeg = VER['binZeroDeg']
+    data = [['X', 'Y', 'BBTop', 'BBBottom', 'BBPeak', 'ZeroDeg']]
+
+    start = int(request.args['start'])
+    end = int(request.args['end']) + 1
+    BBTop = BBTop[start: end]
+    BBBottom = BBBottom[start: end]
+    BBPeak = BBPeak[start: end]
+    ZeroDeg = ZeroDeg[start: end]
+    for pixels_BBTop, pixels_BBBottom, pixels_BBPeak, pixels_ZeroDeg, i in zip(BBTop, BBBottom, BBPeak, ZeroDeg,
+                                                                               range(0, BBTop.shape[0])):
+        for pixel_BBTop, pixel_BBBottom, pixel_BBPeak, pixel_ZeroDeg, j in zip(pixels_BBTop, pixels_BBBottom,
+                                                                               pixels_BBPeak, pixels_ZeroDeg,
+                                                                               range(0, BBTop.shape[1])):
+            if pixel_BBTop == -1111 or pixel_BBTop == 0:
+                pixel_BBTop = '-'
+            else:
+                pixel_BBTop = int(pixel_BBTop)
+            if pixel_BBBottom == -1111 or pixel_BBBottom == 0:
+                pixel_BBBottom = '-'
+            else:
+                pixel_BBBottom = int(pixel_BBBottom)
+            if pixel_BBPeak == -1111 or pixel_BBPeak == 0:
+                pixel_BBPeak = '-'
+            else:
+                pixel_BBPeak = int(pixel_BBPeak)
+
+            data.append([i, j, pixel_BBTop, pixel_BBBottom, pixel_BBPeak, int(pixel_ZeroDeg)])
+    f.close()
+    return jsonify(data)

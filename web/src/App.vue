@@ -1,5 +1,7 @@
 <template>
-  <BB_Visual></BB_Visual>
+  <div id="app">
+    <BB_Visual></BB_Visual>
+  </div>
 </template>
 
 <script>
